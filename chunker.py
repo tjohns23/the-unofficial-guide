@@ -79,6 +79,31 @@ def fallback_split(
 
     return chunks
 
+def document_split(documents: list[Document]) -> list[Chunk]:
+    """
+    One document, one chunk. No windowing, no overlap.
+
+    Fits campus_life: every document is a self-contained answer to one
+    question (178-549 characters, well under any chunk-size cutoff worth
+    choosing), so there is nothing to gain from slicing inside one and a real
+    cost to doing it — see criterion 4 in criteria.md.
+    """
+    chunks: list[Chunk] = []
+
+    for doc in documents:
+        if doc.text:
+            chunks.append(
+                Chunk(
+                    text=doc.text,
+                    source=doc.source,
+                    index=0,  # always the first (and only) chunk of this file
+                    produced_by="chunker.py::document_split",
+                )
+            )
+
+    return chunks
+
+
 
 def split_documents(documents: list[Document]) -> list[Chunk]:
     """
@@ -97,7 +122,8 @@ def split_documents(documents: list[Document]) -> list[Chunk]:
       - Would splitting on paragraph breaks keep more thoughts intact than
         splitting on a character count?
     """
-    return fallback_split(documents)
+    return document_split(documents)
+    # return fallback_split(documents)
 
 
 def describe(chunks: list[Chunk]) -> str:
