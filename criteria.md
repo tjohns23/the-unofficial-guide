@@ -22,9 +22,14 @@ pipeline earns credit; *"80% seemed reasonable"* does not.
 For at least 4 of my 5 test questions, the retrieved chunks include one that
 contains the answer.
 
-**Why this target:**
-<!-- e.g. "One of my questions is about a topic only two documents mention, so
-     I expect that one to be hard." -->
+**Why this target:** My hardest question is "How many exams are there for CS
+210?" — the document never states the count "three"; it says "two midterms
+and a final," so a correct answer requires combining a phrase into a number
+rather than matching one. My other four questions (when study abroad
+applications open, Halden Hall's hours, the campus job hour cap, credits
+needed to graduate) are each a single literal fact stated in one sentence of
+one document, so I expect those four to retrieve cleanly and the exam-count
+question to be the one likely miss.
 
 ---
 
@@ -32,9 +37,15 @@ contains the answer.
 
 Every answer the system produces names at least one source document.
 
-**Why this target:**
-<!-- Why all five and not four? What about your setup makes that achievable —
-     or what would have to go wrong for it not to be? -->
+**Why this target:** Every document in `campus_life` is short, self-contained
+prose with a clear filename, and `generate.py`'s system prompt explicitly
+instructs the model to name the filename it used and refuse rather than
+guess when nothing relevant came back. Since the relevance gate only lets a
+question through once retrieval has already found something close enough,
+there's always at least one real source available to name by the time
+generation runs — I'd only expect to miss this if the model ignores the
+instruction outright, which is worth catching, not assuming away. That's why
+all 5 and not 4.
 
 ---
 
@@ -49,49 +60,59 @@ in at least 4 of 5 tries.
      what happened into your run log. Swap them for your own if you'd rather —
      just keep five of them, or the "4 of 5" above has nothing to be 4 of. -->
 
-**Why this target:**
-<!-- What did your distances look like when you set the cutoff in Milestone 4?
-     Was there a clean gap, or did the two groups overlap? -->
+**Why this target:** My `OUT_OF_SCOPE` questions (the capital of Mongolia,
+changing diesel oil, the 1994 World Cup, ibuprofen dosage, a Rust for-loop)
+share essentially no vocabulary with a US campus-life corpus about dining
+halls, dorms, courses and admin policy, so I expect their embeddings to land
+far from anything in my index — a clean gap above the 0.6 default, not a
+close call. I haven't measured the actual distances yet — that's Milestone
+4 — so I'm setting 4 of 5 rather than 5 of 5 as a hedge against one embedding
+turning out closer than I predict, and I'll revise this note once I have the
+real numbers.
 
 ---
 
-## 4. Something about your chunks
+## 4. Every document lands in exactly one chunk
 
-<!-- YOU WRITE THIS ONE.
+For all 88 documents in `campus_life`, the whole document produces exactly
+one chunk — no document gets cut across a chunk boundary.
 
-     How would you know if your chunks were the right size? Name something
-     countable or observable.
-
-     Examples of the right shape — don't copy these, they should come from
-     what you actually saw in Milestone 3:
-       - "At least 4 of 5 sampled chunks read as a complete thought, with no
-          sentence cut in half at either end."
-       - "No chunk is shorter than 200 characters, since anything below that
-          in my corpus turned out to be a heading with no content under it." -->
-
-
-
-**Why this target:**
-
-
+**Why this target:** I checked this directly: my documents run 178–549
+characters, well under my 800-character chunk size, and `chunker.py`'s own
+fallback splitter already produces 88 documents → 88 chunks with nothing
+split. Each post is a self-contained answer to one question under its
+filename (e.g. `thread_parking.txt`), so cutting inside one would produce a
+fragment that only makes sense with the piece removed. For this corpus, the
+right chunk size isn't a fixed character count — it's "big enough to hold
+the longest document" — so the target is 88 of 88, not 4 of 5: anything less
+means my chunk size stopped being big enough for at least one post.
 
 ---
 
-## 5. Your choice
+## 5. Refusal precision — the source named is the one that's actually right
 
-<!-- YOU WRITE THIS ONE TOO.
+When the system answers a question (doesn't refuse), the source it names is
+the specific document that actually contains the fact stated — not merely a
+different document from the same topic cluster. For the 3 of my 5 test
+questions that fall inside a multi-document cluster (CS 210's exam count, out
+of its main/exams/workload trio; Halden Hall's hours, out of its
+main/follow-up pair; the campus job hour cap, out of its two related jobs
+documents), at least 2 of 3 name the document that actually contains the
+specific fact used.
 
-     Pick something you actually care about getting right. It could be about
-     speed, about refusals, about a particular kind of question your corpus
-     handles badly, about source attribution being correct rather than merely
-     present — anything, as long as it names a number or an observable
-     outcome. -->
-
-
-
-**Why this target:**
-
-
+**Why this target:** `campus_life` isn't one document per topic — 8 courses
+each have 3 near-duplicate pages (main, exams, workload), and dining halls
+and dorms have paired main/follow-up documents that repeat some facts but
+not others (Halden Hall's follow-up repeats its 7:00pm closing time but never
+mentions its 7:30am opening time). A model can satisfy criterion 2 — "names a
+source" — while citing the wrong document in a pair like that, and that
+failure is invisible unless I specifically check the cited file against the
+fact stated. I'm checking only the 3 of my 5 questions that actually sit in a
+cluster, since the other 2 (study abroad, graduation requirements) have no
+sibling document to confuse retrieval with. I set 2 of 3 rather than 3 of 3
+because the CS 210 exam count is duplicated verbatim in two documents, so
+either citation is technically correct — that case may not be a fair test of
+the failure mode I'm actually trying to catch.
 
 ---
 
