@@ -202,12 +202,7 @@ clear of the gate.
 touched anything, since it's a lot of files for a first read. It walked
 through the five pipeline stages (ingest → chunker → store → gate →
 generate), what each file was responsible for, and what each of the four
-corpora looked like. It also caught something I hadn't noticed myself:
-`.env.example` was tracked in git but missing from my actual working tree,
-which would have broken `RUNNING.md`'s own setup instructions (`copy
-.env.example .env`) for anyone else cloning the repo. I didn't change
-anything about its explanation — it just meant I started Milestone 1 knowing
-what each file did instead of guessing from filenames.
+corpora looked like. 
 
 **2.** After I wrote my own `document_split` function and asked Claude to
 check it, it didn't just read the code — it actually ran `python chunker.py`
