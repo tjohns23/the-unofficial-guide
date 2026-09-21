@@ -107,20 +107,16 @@ def document_split(documents: list[Document]) -> list[Chunk]:
 
 def split_documents(documents: list[Document]) -> list[Chunk]:
     """
-    Split documents into chunks. ⚠️ REPLACE THE BODY OF THIS IN MILESTONE 3.
+    Split documents into chunks. Milestone 3 strategy, replacing the fallback.
 
-    Right now it just calls the fallback. That is the plain, generic behaviour
-    the brief is talking about.
+    Calls `document_split`: one whole document becomes one chunk, no
+    character-count windowing. See its docstring, and "Chunking Strategy" in
+    README.md, for why — every campus_life document is already a
+    self-contained answer to one question, so there's nothing to gain from
+    slicing inside one.
 
-    When you write your own strategy, set `produced_by` to
-    "chunker.py::split_documents" so your README's Sample Chunks section names
-    the right function. `app.py chunks` prints that string for you.
-
-    Things worth thinking about before you write any code:
-      - Are your documents short posts or long guides?
-      - Is the useful information in one sentence, or spread over a paragraph?
-      - Would splitting on paragraph breaks keep more thoughts intact than
-        splitting on a character count?
+    `fallback_split` above is still here for comparison; swap the line below
+    to go back to it.
     """
     return document_split(documents)
     # return fallback_split(documents)
