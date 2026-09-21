@@ -1,6 +1,6 @@
 # The Unofficial Guide
 
-<!-- Replace this line with your name and which corpus you picked. -->
+Terell — `campus_life` corpus.
 
 > **This file is your submission.** Fill it in as you go — most sections get
 > written during the milestone that produces them, not at the end.
@@ -21,26 +21,49 @@
 
 ## What This Does
 
-<!-- Three or four sentences. Which corpus you picked, and the kinds of
-     questions your system answers. Write it for someone who has never seen
-     this repo.
-
-     Milestone 5. -->
+This is a retrieval-augmented question-answering system for `campus_life`, a
+corpus of 88 short, student-written posts about life at a university —
+dining halls, dorms, course workload and exams, and the administrative rules
+nobody explains properly (add/drop deadlines, study abroad, graduation
+requirements, campus jobs). Ask it a specific, factual question about any of
+that — "how many exams does CS 210 have?", "when do study abroad applications
+open?", "how many hours a week can I work a campus job?" — and it retrieves
+the post(s) that actually answer it, checks whether anything relevant enough
+came back at all, and has a model write a short answer that names the
+specific file it came from. Ask it something outside that world — car
+repair, world capitals, a programming language — and it says so instead of
+guessing.
 
 ## Chunking Strategy
 
-**Chunk size:**
-**Overlap:**
+**Chunk size:** No fixed size — one whole document is one chunk.
+**Overlap:** None (there's never a second piece of the same document to overlap with).
 
-<!-- What about YOUR documents made you pick these numbers? Short posts and
-     long sectioned guides don't want the same chunking, and "800 seemed
-     reasonable" earns nothing. Point at something you noticed when you read
-     the documents in Milestone 1.
+I started by reading what the starter's own fixed-size chunker did to `campus_life`:
+`python app.py index` reported 88 documents → 88 chunks, because every document
+(178–549 characters) is already well under the 800-character window, so nothing
+ever got split. That's not a coincidence worth ignoring — every post in this corpus
+is a short, self-contained answer to one question, named for that question in its
+own filename (`thread_parking.txt`, `admin_add_drop_deadline.txt`). There's no
+paragraph inside one of these worth pulling apart from the rest.
 
-     If you changed your mind partway through, say so and say why. That's worth
-     more than pretending you got it right first time.
+I considered one alternative: grouping documents by the first word of their
+filename (`course_*`, `admin_*`, `dining_*`, `housing_*`) into bigger topic
+chunks. I checked what that would actually produce before writing any code, and
+it's worse, not just riskier — `course_*` alone would combine 27 documents
+(all 9 courses' main/exam/workload pages) into a single 7,731-character chunk,
+mixing CS 210 with Econ 101 with Physics 130. `admin_*` does the same to 16
+unrelated policy topics. That's the "chunk covers four topics at once and matches
+every question a little" failure, except with a dozen topics instead of four —
+splitting those combined blobs back down to size would just reintroduce the
+mid-sentence cutting problem I was trying to avoid in the first place.
 
-     Milestone 3. -->
+So instead of relying on the accident that 800 > 549, I replaced
+`split_documents` with `chunker.py::document_split`, which doesn't window by
+character count at all — it emits exactly one `Chunk` per `Document`, with no
+overlap parameter because there's nothing adjacent within a document to stitch
+back together. Chunk boundaries are document boundaries, on purpose, because for
+this corpus a document *is* the right unit of retrieval.
 
 ## Sample Chunks
 
@@ -54,14 +77,17 @@
      Milestone 3. -->
      
 
-**Chunk 1** — source: `` — produced by: ``
+**Chunk 1** — source: `admin_add_drop_deadline.txt#0` — produced by: `chunker.py::document_split`
+
+```
 On the add/drop deadline
 
 You can add a course through the end of the second week. Dropping is a longer window — through the end of week six — but a drop after week two shows as a W on your transcript. Nothing anywhere on the registrar's site says this plainly, and students find out from each other.
 ```
-```
 
-**Chunk 2** — source: `` — produced by: ``
+**Chunk 2** — source: `course_biol_160.txt#0` — produced by: `chunker.py::document_split`
+
+```
 BIOL 160 Cell Biology
 
 I lived here my sophomore year. Format is lecture three times a week with a weekly lab. Assessment: four unit tests and a cumulative final. Not curved.
@@ -70,27 +96,30 @@ Expect 9 to 11 hours a week, the heaviest first-year course by reputation.
 
 The one piece of advice: the unit tests come fast, roughly every three weeks; falling behind once is very hard to recover from.
 ```
-```
 
-**Chunk 3** — source: `` — produced by: ``
+**Chunk 3** — source: `course_hist_118_workload.txt#0` — produced by: `chunker.py::document_split`
+
+```
 Workload for HIST 118 Modern World History
 
 People keep asking so: a lot of reading, about 120 pages a week, but no problem sets. That's real time, not optimistic time.
 
 It's front-loaded — the first month is heavier than the rest, partly because you're learning the format.
 ```
-```
 
-**Chunk 4** — source: `` — produced by: ``
+**Chunk 4** — source: `dining_pellew_dining_hall_followup.txt#0` — produced by: `chunker.py::document_split`
+
+```
 Re: Pellew Dining Hall
 
 Adding to what people have said about Pellew Dining Hall. The wait figure of 12 to 18 minutes at peak matches what I've seen. If you're trying to eat between classes, go before 11:45 and it's a different building entirely.
 
 Also worth saying: the furthest hall from anywhere, next to the athletics centre. Nobody tells you this at orientation.
 ```
-```
 
-**Chunk 5** — source: `` — produced by: ``
+**Chunk 5** — source: `housing_innisfree_hall.txt#0` — produced by: `chunker.py::document_split`
+
+```
 Innisfree Hall — what it's actually like
 
 Transferred in last year, so take this with a grain of salt. Built 1991, renovated 2022. Rooms are doubles arranged as pairs sharing one bathroom between two rooms.
@@ -101,21 +130,31 @@ The bad: no air conditioning, which matters for the first three weeks of Septemb
 
 Laundry costs $1.75 wash, $1.75 dry, app-based. On noise: moderate; the building is L-shaped and the short wing is much quieter.
 ```
-```
 
 ## Sample Answer
 
 <!-- One complete question and answer, pasted as text, with the source line
      visible. Milestone 4. -->
 
-**Question:**
+**Question:** How many exams are there for cs210?
 
 **Answer:**
 
 ```
+There are three exams for CS 210: two midterms and a final.
+
+Sources: `course_cs_210_exams.txt` and `course_cs_210.txt`
 ```
 
-**My relevance cutoff:**
+This one's worth noting: `top_k=5` also pulled back `course_cs_340_exams.txt` (Databases —
+a different course with "one midterm and a final") at distance 0.415, closer than CS 210's
+own main page at 0.485 — the two courses' exam pages share almost identical boilerplate
+phrasing ("assessment... midterm(s) and a final"), which confuses the embedding even though
+it never confused the model. The answer above still named only the correct two CS 210
+sources and never touched CS 340's numbers. See criterion 5 in `criteria.md` — this is
+exactly the risk that criterion is watching for.
+
+**My relevance cutoff:** 0.6 (kept the starter default — see reasoning below)
 
 <!-- The number you set in config.py, and how you got there.
 
@@ -128,7 +167,25 @@ Laundry costs $1.75 wash, $1.75 dry, app-based. On noise: moderate; the building
 
 | Question | In corpus? | Best distance |
 |---|---|---|
-|  |  |  |
+| When do study abroad applications open? | Yes | 0.234 |
+| How many credits do I need to graduate? | Yes | 0.303 |
+| How many exams are there for cs210? | Yes | 0.338 |
+| When is Halden Hall open? | Yes | 0.357 |
+| How many hours a week can I work a job while in school? | Yes | 0.498 |
+| What is the capital of Mongolia? | No | 0.825 |
+| Who won the 1994 World Cup? | No | 0.886 |
+| What is the recommended dosage of ibuprofen for a headache? | No | 0.844 |
+| How do I change the oil in a diesel engine? | No | 0.934 |
+| How do I write a for loop in Rust? | No | 0.896 |
+
+The two groups don't overlap at all: every in-corpus question landed between 0.234 and
+0.498, every out-of-corpus question landed between 0.825 and 0.934 — a clean 0.327-wide
+gap with nothing in it. The starter's default of 0.6 sits comfortably inside that gap
+(0.102 above my worst in-corpus case, 0.225 below my best out-of-corpus case), so I kept
+it rather than moving it. The one question that came closest to the line, job hours per
+week (0.498), was pulled toward the cutoff by several `course_*_workload.txt` chunks that
+share "X hours a week" phrasing with the jobs question — a real near-miss, but still well
+clear of the gate.
 
 ## How I Used AI
 
@@ -141,9 +198,30 @@ Laundry costs $1.75 wash, $1.75 dry, app-based. On noise: moderate; the building
 
      Milestone 5. -->
 
-**1.**
+**1.** I asked Claude to explain what already existed in the starter before I
+touched anything, since it's a lot of files for a first read. It walked
+through the five pipeline stages (ingest → chunker → store → gate →
+generate), what each file was responsible for, and what each of the four
+corpora looked like. It also caught something I hadn't noticed myself:
+`.env.example` was tracked in git but missing from my actual working tree,
+which would have broken `RUNNING.md`'s own setup instructions (`copy
+.env.example .env`) for anyone else cloning the repo. I didn't change
+anything about its explanation — it just meant I started Milestone 1 knowing
+what each file did instead of guessing from filenames.
 
-**2.**
+**2.** After I wrote my own `document_split` function and asked Claude to
+check it, it didn't just read the code — it actually ran `python chunker.py`
+and got a `NameError` immediately, because I'd never initialized the
+`chunks` list before appending to it. Running it also surfaced a second bug
+I'd have missed by eye: my `index` counter incremented once per document
+across the *whole corpus* instead of resetting to 0 for each document's own
+chunk, which would have made every chunk's `source#index` label wrong even
+though the function wouldn't have crashed. After I applied the fix it fed,
+it re-ran the chunker and compared the printed summary (88 chunks, shortest
+178, longest 549) against the raw document length stats to confirm every
+document turned into exactly one chunk with nothing dropped or cut — that
+diagnostic is what actually told me chunking was working, not just that it
+ran without an error.
 
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
